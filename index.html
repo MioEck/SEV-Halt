@@ -99,11 +99,17 @@
 <body>
 <header>
   <h1>SEV-Haltestellen</h1>
-  <p>Schleswig-Holstein · Plan, Weg, Koordinaten · v3</p>
+  <p>Schleswig-Holstein · Plan, Weg, Koordinaten · v5</p>
 </header>
 
 <main>
   <input id="suche" class="suche" type="search" placeholder="Bahnhof suchen" autocomplete="off">
+  <div class="werkzeug" style="margin:0 0 12px">
+    <h3>Eigener Proxy</h3>
+    <input id="pUrl" placeholder="https://…/?url=">
+    <button id="pSave">Speichern</button>
+    <p class="klein">Wird zuerst verwendet. Die Ziel-Adresse wird hinten angehängt.</p>
+  </div>
   <div id="status" class="hinweis">Bahnhofsliste wird geladen …</div>
   <ul id="liste" class="liste"></ul>
 
@@ -298,11 +304,12 @@ function fetchMitZeit(url, ms, opt){
 
 async function holePdf(nr, melde){
   const ziel = 'https://www.bahnhof.de/downloads/replacement-service-maps/' + nr + '.pdf';
+  const wege = proxyListe();
   const fehler = [];
-  for(let i=0;i<PROXIES.length;i++){
-    if(melde) melde('Versuch ' + (i+1) + ' von ' + PROXIES.length + ' …');
+  for(let i=0;i<wege.length;i++){
+    if(melde) melde('Versuch ' + (i+1) + ' von ' + wege.length + ' …');
     try{
-      const r = await fetchMitZeit(PROXIES[i](ziel), 15000);
+      const r = await fetchMitZeit(wege[i](ziel), 45000);
       if(!r.ok){ fehler.push((i+1)+': HTTP '+r.status); continue; }
       const buf = await r.arrayBuffer();
       if(buf.byteLength < 2000){ fehler.push((i+1)+': Antwort zu klein'); continue; }
@@ -433,6 +440,14 @@ document.getElementById('mAdd').onclick = () => {
   sichere('eigene', liste);
   document.getElementById('mName').value = ''; document.getElementById('mNr').value = '';
   zeichne();
+};
+
+document.getElementById('pUrl').value = eigenerProxy();
+document.getElementById('pSave').onclick = () => {
+  sichere('proxy', document.getElementById('pUrl').value.trim());
+  const b = document.getElementById('pSave');
+  b.textContent = 'Gespeichert';
+  setTimeout(()=>{ b.textContent = 'Speichern'; }, 1500);
 };
 
 zeichne();
