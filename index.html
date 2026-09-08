@@ -99,17 +99,11 @@
 <body>
 <header>
   <h1>SEV-Haltestellen</h1>
-  <p>Schleswig-Holstein · Plan, Weg, Koordinaten · v7</p>
+  <p>Schleswig-Holstein · Plan, Weg, Koordinaten · v8</p>
 </header>
 
 <main>
   <input id="suche" class="suche" type="search" placeholder="Bahnhof suchen" autocomplete="off">
-  <div class="werkzeug" style="margin:0 0 12px">
-    <h3>Eigener Proxy</h3>
-    <input id="pUrl" placeholder="https://…/?url=">
-    <button id="pSave">Speichern</button>
-    <p class="klein">Wird zuerst verwendet. Die Ziel-Adresse wird hinten angehängt.</p>
-  </div>
   <div id="status" class="hinweis">Bahnhofsliste wird geladen …</div>
   <ul id="liste" class="liste"></ul>
 
@@ -277,28 +271,15 @@ function zeichne(){
 
 /* ---------- SEV-Plan laden ---------- */
 
-function eigenerProxy(){
-  let p = (lade('proxy') || '').trim();
-  if(!p) return '';
-  if(!/[?&][^=]+=$/.test(p)){
-    if(!p.endsWith('/')) p += '/';
-    p += '?url=';
-  }
-  return p;
-}
+const EIGENER_PROXY = 'https://sev.macbook33.workers.dev/?url=';
 
 function proxyListe(){
-  const p = [];
-  const eig = eigenerProxy();
-  if(eig) p.push(u => eig + encodeURIComponent(u));
-  p.push(
+  return [
+    u => EIGENER_PROXY + encodeURIComponent(u),
     u => u,
     u => 'https://api.allorigins.win/raw?url=' + encodeURIComponent(u),
-    u => 'https://api.codetabs.com/v1/proxy/?quest=' + encodeURIComponent(u),
-    u => 'https://cors.eu.org/' + u,
-    u => 'https://test.cors.workers.dev/?' + u
-  );
-  return p;
+    u => 'https://api.codetabs.com/v1/proxy/?quest=' + encodeURIComponent(u)
+  ];
 }
 
 const PROXIES = proxyListe();
@@ -458,14 +439,6 @@ document.getElementById('mAdd').onclick = () => {
   sichere('eigene', liste);
   document.getElementById('mName').value = ''; document.getElementById('mNr').value = '';
   zeichne();
-};
-
-document.getElementById('pUrl').value = eigenerProxy();
-document.getElementById('pSave').onclick = () => {
-  sichere('proxy', document.getElementById('pUrl').value.trim());
-  const b = document.getElementById('pSave');
-  b.textContent = 'Gespeichert';
-  setTimeout(()=>{ b.textContent = 'Speichern'; }, 1500);
 };
 
 zeichne();
