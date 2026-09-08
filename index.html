@@ -1,0 +1,421 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#123a4d">
+<title>SEV-Halt SH</title>
+<style>
+  :root{
+    --tiefsee:#123a4d;
+    --tiefsee-hell:#1d5570;
+    --sand:#f2ede4;
+    --papier:#ffffff;
+    --schrift:#16242b;
+    --gedaempft:#5d6f78;
+    --signal:#c4531f;
+    --linie:#d9d2c6;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0}
+  body{
+    background:var(--sand);
+    color:var(--schrift);
+    font-family:"Segoe UI",Roboto,system-ui,sans-serif;
+    font-size:17px;
+    line-height:1.45;
+    -webkit-text-size-adjust:100%;
+  }
+  header{
+    background:var(--tiefsee);
+    color:#fff;
+    padding:14px 16px calc(14px + env(safe-area-inset-bottom,0px));
+    padding-bottom:14px;
+    position:sticky;top:0;z-index:10;
+  }
+  header h1{margin:0;font-size:19px;font-weight:600;letter-spacing:.2px}
+  header p{margin:2px 0 0;font-size:13px;color:#b9d2df}
+  main{padding:12px 12px 40px;max-width:640px;margin:0 auto}
+
+  .suche{
+    width:100%;padding:12px 14px;font-size:17px;
+    border:1px solid var(--linie);border-radius:10px;background:var(--papier);
+    color:var(--schrift);margin-bottom:10px;
+  }
+  .suche:focus{outline:2px solid var(--tiefsee-hell);outline-offset:1px}
+
+  .liste{list-style:none;margin:0;padding:0;background:var(--papier);border-radius:12px;overflow:hidden;border:1px solid var(--linie)}
+  .liste li{border-top:1px solid var(--linie)}
+  .liste li:first-child{border-top:none}
+  .bf{
+    display:flex;align-items:center;gap:10px;width:100%;
+    background:none;border:none;text-align:left;
+    padding:15px 14px;font-size:17px;color:var(--schrift);cursor:pointer;
+    font-family:inherit;
+  }
+  .bf:active{background:#eef3f6}
+  .bf .name{flex:1;font-weight:500}
+  .bf .nr{font-size:13px;color:var(--gedaempft);font-variant-numeric:tabular-nums}
+  .stern{background:none;border:none;font-size:20px;padding:12px 10px;cursor:pointer;color:var(--linie)}
+  .stern.an{color:var(--signal)}
+
+  .hinweis{padding:14px;color:var(--gedaempft);font-size:15px}
+  .fehler{background:#fdeee8;border:1px solid #f0c3b1;border-radius:10px;padding:12px 14px;margin:10px 0;font-size:15px}
+
+  /* Detail */
+  #detail{position:fixed;inset:0;background:var(--sand);z-index:20;overflow-y:auto;display:none}
+  #detail.offen{display:block}
+  .dkopf{
+    background:var(--tiefsee);color:#fff;padding:12px 14px;
+    display:flex;align-items:center;gap:12px;position:sticky;top:0;z-index:2;
+  }
+  .zurueck{background:none;border:1px solid #47788f;color:#fff;border-radius:8px;padding:8px 12px;font-size:16px;cursor:pointer;font-family:inherit}
+  .dkopf h2{margin:0;font-size:18px;font-weight:600;flex:1}
+  .dinhalt{padding:12px 12px 60px;max-width:640px;margin:0 auto}
+
+  .plan{width:100%;background:var(--papier);border:1px solid var(--linie);border-radius:12px;display:block}
+  .wegtext{background:var(--papier);border:1px solid var(--linie);border-radius:12px;padding:14px;margin-top:12px;white-space:pre-wrap}
+  .wegtext h3{margin:0 0 6px;font-size:15px;font-weight:600;color:var(--gedaempft)}
+
+  .koord{
+    display:block;margin-top:12px;background:var(--signal);color:#fff;
+    text-decoration:none;border-radius:12px;padding:16px;text-align:center;
+    font-size:19px;font-weight:600;font-variant-numeric:tabular-nums;
+  }
+  .koord span{display:block;font-size:13px;font-weight:400;opacity:.9;margin-top:3px}
+  .pdflink{display:block;text-align:center;margin-top:12px;color:var(--tiefsee-hell);font-size:15px}
+  .lade{padding:24px 14px;text-align:center;color:var(--gedaempft)}
+  .spinner{width:26px;height:26px;border:3px solid var(--linie);border-top-color:var(--tiefsee);border-radius:50%;margin:0 auto 10px;animation:dreh .9s linear infinite}
+  @keyframes dreh{to{transform:rotate(360deg)}}
+  @media (prefers-reduced-motion:reduce){.spinner{animation-duration:3s}}
+
+  .werkzeug{margin-top:14px;background:var(--papier);border:1px solid var(--linie);border-radius:12px;padding:12px}
+  .werkzeug h3{margin:0 0 8px;font-size:15px}
+  .werkzeug input{width:100%;padding:10px;border:1px solid var(--linie);border-radius:8px;margin-bottom:8px;font-size:16px;font-family:inherit}
+  .werkzeug button{background:var(--tiefsee);color:#fff;border:none;border-radius:8px;padding:11px 14px;font-size:16px;cursor:pointer;font-family:inherit}
+  .klein{font-size:13px;color:var(--gedaempft)}
+</style>
+</head>
+<body>
+<header>
+  <h1>SEV-Haltestellen</h1>
+  <p>Schleswig-Holstein · Plan, Weg, Koordinaten</p>
+</header>
+
+<main>
+  <input id="suche" class="suche" type="search" placeholder="Bahnhof suchen" autocomplete="off">
+  <div id="status" class="hinweis">Bahnhofsliste wird geladen …</div>
+  <ul id="liste" class="liste"></ul>
+
+  <div class="werkzeug">
+    <h3>Bahnhof selbst eintragen</h3>
+    <input id="mName" placeholder="Name, z. B. Rieseby">
+    <input id="mNr" inputmode="numeric" placeholder="Bahnhofsnummer, z. B. 5588">
+    <button id="mAdd">Hinzufügen</button>
+    <p class="klein">Die Nummer steht in der PDF-Adresse des SEV-Plans auf bahnhof.de.</p>
+  </div>
+</main>
+
+<div id="detail">
+  <div class="dkopf">
+    <button class="zurueck" id="zurueck">Zurück</button>
+    <h2 id="dTitel"></h2>
+  </div>
+  <div class="dinhalt" id="dInhalt"></div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
+<script>
+pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.worker.min.js';
+
+const SPEICHER = 'sevhalt.';
+const lade  = k => { try { return JSON.parse(localStorage.getItem(SPEICHER+k)); } catch(e){ return null; } };
+const sichere = (k,v) => { try { localStorage.setItem(SPEICHER+k, JSON.stringify(v)); } catch(e){} };
+
+let bahnhoefe = [];
+let favoriten = lade('favoriten') || [];
+
+/* ---------- Bahnhofsliste ---------- */
+
+const SPARQL_BOX = `PREFIX geo: <http://www.opengis.net/ont/geosparql#>
+SELECT ?itemLabel ?nr WHERE {
+  SERVICE wikibase:box {
+    ?item wdt:P625 ?coord .
+    bd:serviceParam wikibase:cornerSouthWest "Point(7.8 53.35)"^^geo:wktLiteral .
+    bd:serviceParam wikibase:cornerNorthEast "Point(11.4 55.1)"^^geo:wktLiteral .
+  }
+  ?item wdt:P12282 ?nr .
+  SERVICE wikibase:label { bd:serviceParam wikibase:language "de,en". }
+}`;
+
+const SPARQL_LAND = `SELECT ?itemLabel ?nr WHERE {
+  ?item wdt:P12282 ?nr .
+  ?item wdt:P131* wd:Q1194 .
+  SERVICE wikibase:label { bd:serviceParam wikibase:language "de,en". }
+}`;
+
+async function sparql(q){
+  const url = 'https://query.wikidata.org/sparql?format=json&query=' + encodeURIComponent(q);
+  let letzter = '';
+  for(const p of PROXIES){
+    try{
+      const r = await fetch(p(url), {headers:{'Accept':'application/sparql-results+json'}});
+      if(!r.ok){ letzter = 'HTTP ' + r.status; continue; }
+      const j = await r.json();
+      if(j.results && j.results.bindings) return j.results.bindings;
+      letzter = 'unerwartete Antwort';
+    }catch(e){ letzter = e.message; }
+  }
+  throw new Error(letzter || 'kein Zugriff');
+}
+
+function ausBbox(zeilen){
+  const out = [];
+  for(const z of zeilen){
+    const m = /Point\(([-\d.]+) ([-\d.]+)\)/.exec(z.coord?.value || '');
+    if(!m) continue;
+    const lon = parseFloat(m[1]), lat = parseFloat(m[2]);
+    if(lat < 53.35 || lat > 55.10 || lon < 7.80 || lon > 11.40) continue;
+    out.push({name:z.itemLabel.value, nr:z.nr.value});
+  }
+  return out;
+}
+
+async function holeListe(){
+  const zwischen = lade('liste');
+  if(zwischen && zwischen.daten && zwischen.daten.length){
+    bahnhoefe = zwischen.daten;
+    zeichne();
+    setStatus('');
+  }
+  const fehlerliste = [];
+  try{
+    let daten = [];
+    for(const versuch of [SPARQL_BOX, SPARQL_LAND]){
+      try{
+        const z = await sparql(versuch);
+        daten = z.map(x => ({name:x.itemLabel.value, nr:x.nr.value}));
+        if(daten.length >= 20) break;
+      }catch(e){ fehlerliste.push(e.message); }
+    }
+    if(daten.length < 20) throw new Error(fehlerliste.join(' / ') || 'zu wenige Treffer');
+    daten = daten
+      .filter(b => /^\d+$/.test(b.nr) && !/^Q\d+$/.test(b.name))
+      .sort((a,b) => a.name.localeCompare(b.name,'de'));
+    const gesehen = new Set(); const rein = [];
+    for(const b of daten){ if(!gesehen.has(b.nr)){ gesehen.add(b.nr); rein.push(b); } }
+    bahnhoefe = rein;
+    sichere('liste', {daten:rein, stand:Date.now()});
+    zeichne(); setStatus('');
+  }catch(e){
+    if(!bahnhoefe.length){
+      setStatus('Bahnhofsliste konnte nicht geladen werden. Meldung: ' + e.message + ' — bitte diesen Text an mich weitergeben. Bahnhöfe lassen sich unten auch selbst eintragen.', true);
+    }
+  }
+}
+
+function setStatus(text, fehler){
+  const el = document.getElementById('status');
+  el.textContent = text;
+  el.className = text ? (fehler ? 'fehler' : 'hinweis') : '';
+  el.style.display = text ? '' : 'none';
+}
+
+function eigene(){ return lade('eigene') || []; }
+
+function alle(){
+  const zusatz = eigene();
+  const nummern = new Set(bahnhoefe.map(b=>b.nr));
+  return bahnhoefe.concat(zusatz.filter(b=>!nummern.has(b.nr)))
+    .sort((a,b)=>{
+      const fa = favoriten.includes(a.nr), fb = favoriten.includes(b.nr);
+      if(fa !== fb) return fa ? -1 : 1;
+      return a.name.localeCompare(b.name,'de');
+    });
+}
+
+function zeichne(){
+  const filter = document.getElementById('suche').value.trim().toLowerCase();
+  const ul = document.getElementById('liste');
+  ul.innerHTML = '';
+  const treffer = alle().filter(b => !filter || b.name.toLowerCase().includes(filter) || b.nr.includes(filter));
+  if(!treffer.length && filter){ ul.innerHTML = '<li class="hinweis">Kein Bahnhof gefunden.</li>'; return; }
+  for(const b of treffer){
+    const li = document.createElement('li');
+
+    const btn = document.createElement('button');
+    btn.className = 'bf';
+    btn.innerHTML = '<span class="name"></span><span class="nr"></span>';
+    btn.querySelector('.name').textContent = b.name;
+    btn.querySelector('.nr').textContent = b.nr;
+    btn.onclick = () => oeffne(b);
+
+    const st = document.createElement('button');
+    st.className = 'stern' + (favoriten.includes(b.nr) ? ' an' : '');
+    st.textContent = '★';
+    st.setAttribute('aria-label','Merken');
+    st.onclick = (e) => {
+      e.stopPropagation();
+      favoriten = favoriten.includes(b.nr) ? favoriten.filter(n=>n!==b.nr) : favoriten.concat(b.nr);
+      sichere('favoriten', favoriten); zeichne();
+    };
+
+    const wrap = document.createElement('div');
+    wrap.style.display='flex'; wrap.style.alignItems='center';
+    wrap.appendChild(btn); wrap.appendChild(st);
+    li.appendChild(wrap);
+    ul.appendChild(li);
+  }
+}
+
+/* ---------- SEV-Plan laden ---------- */
+
+const PROXIES = [
+  u => u,
+  u => 'https://api.allorigins.win/raw?url=' + encodeURIComponent(u),
+  u => 'https://corsproxy.io/?url=' + encodeURIComponent(u),
+  u => 'https://api.codetabs.com/v1/proxy?quest=' + encodeURIComponent(u)
+];
+
+async function holePdf(nr){
+  const ziel = 'https://www.bahnhof.de/downloads/replacement-service-maps/' + nr + '.pdf';
+  let letzter = '';
+  for(const p of PROXIES){
+    try{
+      const r = await fetch(p(ziel));
+      if(!r.ok){ letzter = 'HTTP ' + r.status; continue; }
+      const buf = await r.arrayBuffer();
+      if(buf.byteLength < 2000){ letzter = 'Antwort zu klein'; continue; }
+      return buf;
+    }catch(e){ letzter = e.message; }
+  }
+  throw new Error(letzter || 'kein Zugriff');
+}
+
+function findeKoordinaten(text){
+  if(!text) return null;
+  const m = text.match(/(-?\d{1,2}[.,]\d{3,})[,;\s/]+(-?\d{1,3}[.,]\d{3,})/);
+  if(!m) return null;
+  let a = parseFloat(m[1].replace(',','.')), b = parseFloat(m[2].replace(',','.'));
+  if(Math.abs(a) > 90 && Math.abs(b) <= 90){ const t=a; a=b; b=t; }
+  if(Math.abs(a) > 90 || Math.abs(b) > 180) return null;
+  return {lat:a, lon:b};
+}
+
+async function leseQr(seite){
+  for(const skala of [3, 4.5, 6]){
+    const vp = seite.getViewport({scale:skala});
+    const c = document.createElement('canvas');
+    c.width = Math.round(vp.width); c.height = Math.round(vp.height);
+    await seite.render({canvasContext:c.getContext('2d'), viewport:vp}).promise;
+    const bild = c.getContext('2d').getImageData(0,0,c.width,c.height);
+    const treffer = jsQR(bild.data, c.width, c.height, {inversionAttempts:'attemptBoth'});
+    if(treffer){
+      const k = findeKoordinaten(treffer.data);
+      if(k) return k;
+    }
+  }
+  return null;
+}
+
+function wegText(voll){
+  if(!voll) return '';
+  let t = voll.replace(/\s+/g,' ').trim();
+  const start = t.indexOf('Wegbeschreibung');
+  if(start >= 0) t = t.slice(start);
+  t = t.replace(/^Wegbeschreibung Schienenersatzverkehr\s*\*?\s*/,'');
+  const ende = t.search(/\*?Fahrradmitnahme|Im QR Code/);
+  if(ende > 0) t = t.slice(0, ende);
+  return t.replace(/\s*barrierefrei\s*nicht barrierefrei\s*/,' ').trim();
+}
+
+async function oeffne(b){
+  const d = document.getElementById('detail');
+  document.getElementById('dTitel').textContent = b.name;
+  const inhalt = document.getElementById('dInhalt');
+  d.classList.add('offen');
+  document.body.style.overflow = 'hidden';
+
+  const pdfUrl = 'https://www.bahnhof.de/downloads/replacement-service-maps/' + b.nr + '.pdf';
+  const cache = lade('bf.' + b.nr);
+
+  inhalt.innerHTML = '<div class="lade"><div class="spinner"></div>SEV-Plan wird geladen …</div>';
+
+  let kopf = '';
+  if(cache && cache.koord){
+    kopf = koordBlock(cache.koord, b.name) + textBlock(cache.text);
+  }
+
+  try{
+    const buf = await holePdf(b.nr);
+    const pdf = await pdfjsLib.getDocument({data:buf}).promise;
+    const seite = await pdf.getPage(1);
+
+    const vp = seite.getViewport({scale: Math.min(2.2, (window.innerWidth-24)/seite.getViewport({scale:1}).width * 2)});
+    const canvas = document.createElement('canvas');
+    canvas.className = 'plan';
+    canvas.width = Math.round(vp.width); canvas.height = Math.round(vp.height);
+    await seite.render({canvasContext:canvas.getContext('2d'), viewport:vp}).promise;
+
+    const tc = await seite.getTextContent();
+    const roh = tc.items.map(i=>i.str).join(' ');
+    const beschreibung = wegText(roh);
+
+    let koord = findeKoordinaten(roh) || await leseQr(seite);
+
+    inhalt.innerHTML = '';
+    inhalt.appendChild(canvas);
+    inhalt.insertAdjacentHTML('beforeend', textBlock(beschreibung));
+    if(koord){
+      inhalt.insertAdjacentHTML('beforeend', koordBlock(koord, b.name));
+      sichere('bf.'+b.nr, {koord, text:beschreibung, stand:Date.now()});
+    }else{
+      inhalt.insertAdjacentHTML('beforeend',
+        '<div class="fehler">Im Plan war kein lesbarer QR-Code. Der Plan oben ist vollständig, die Koordinaten stehen nur im QR-Code.</div>');
+    }
+    inhalt.insertAdjacentHTML('beforeend',
+      '<a class="pdflink" href="'+pdfUrl+'" target="_blank" rel="noopener">Original-PDF auf bahnhof.de öffnen</a>');
+
+  }catch(e){
+    inhalt.innerHTML = kopf +
+      '<div class="fehler">SEV-Plan konnte nicht geladen werden: '+ e.message +
+      '<br>Grund ist meist die Zugriffssperre des Browsers (CORS).</div>' +
+      '<a class="pdflink" href="'+pdfUrl+'" target="_blank" rel="noopener">Original-PDF auf bahnhof.de öffnen</a>';
+  }
+}
+
+function koordBlock(k, name){
+  const geo = 'geo:'+k.lat+','+k.lon+'?q='+k.lat+','+k.lon+'('+encodeURIComponent(name+' SEV')+')';
+  return '<a class="koord" href="'+geo+'">'+k.lat.toFixed(6)+', '+k.lon.toFixed(6)+
+         '<span>Antippen startet die Navigation</span></a>';
+}
+
+function textBlock(t){
+  if(!t) return '';
+  const sicher = t.replace(/&/g,'&amp;').replace(/</g,'&lt;');
+  return '<div class="wegtext"><h3>Weg zur Ersatzhaltestelle</h3>'+sicher+'</div>';
+}
+
+/* ---------- Bedienung ---------- */
+
+document.getElementById('zurueck').onclick = () => {
+  document.getElementById('detail').classList.remove('offen');
+  document.body.style.overflow = '';
+};
+document.getElementById('suche').addEventListener('input', zeichne);
+document.getElementById('mAdd').onclick = () => {
+  const name = document.getElementById('mName').value.trim();
+  const nr = document.getElementById('mNr').value.trim();
+  if(!name || !/^\d+$/.test(nr)) return;
+  const liste = eigene().concat([{name, nr}]);
+  sichere('eigene', liste);
+  document.getElementById('mName').value = ''; document.getElementById('mNr').value = '';
+  zeichne();
+};
+
+zeichne();
+holeListe();
+</script>
+</body>
+</html>
