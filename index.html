@@ -83,6 +83,8 @@
     font-size:19px;font-weight:600;font-variant-numeric:tabular-nums;
   }
   .koord span{display:block;font-size:13px;font-weight:400;opacity:.9;margin-top:3px}
+  .weiter{display:flex;gap:10px;margin-top:10px}
+  .weiter a{flex:1;text-align:center;padding:12px 6px;border:1px solid var(--linie);border-radius:10px;background:var(--papier);color:var(--tiefsee-hell);text-decoration:none;font-size:16px}
   .pdflink{display:block;text-align:center;margin-top:12px;color:var(--tiefsee-hell);font-size:15px}
   .lade{padding:24px 14px;text-align:center;color:var(--gedaempft)}
   .spinner{width:26px;height:26px;border:3px solid var(--linie);border-top-color:var(--tiefsee);border-radius:50%;margin:0 auto 10px;animation:dreh .9s linear infinite}
@@ -99,7 +101,7 @@
 <body>
 <header>
   <h1>SEV-Haltestellen</h1>
-  <p>Schleswig-Holstein · Plan, Weg, Koordinaten · v8</p>
+  <p>Schleswig-Holstein · Plan, Weg, Koordinaten · v10</p>
 </header>
 
 <main>
@@ -413,9 +415,13 @@ function koordBlock(k, name){
     ? 'https://maps.apple.com/?ll=' + lat + ',' + lon + '&q=' + titel
     : 'geo:' + lat + ',' + lon + '?q=' + lat + ',' + lon + '(' + titel + ')';
   const google = 'https://www.google.com/maps/search/?api=1&query=' + lat + ',' + lon;
+  const tomtom = 'tomtomgo://x-callback-url/navigate?destination=' + lat + ',' + lon;
+  const sygic = 'com.sygic.aura://coordinate|' + lon + '|' + lat + '|drive';
   return '<a class="koord" href="' + ziel + '">' + lat.toFixed(6) + ', ' + lon.toFixed(6) +
          '<span>Antippen startet die Navigation</span></a>' +
-         '<a class="pdflink" href="' + google + '" target="_blank" rel="noopener">Stattdessen in Google Maps öffnen</a>';
+         '<div class="weiter"><a href="' + tomtom + '">TomTom GO</a>' +
+         '<a href="' + sygic + '">Sygic</a>' +
+         '<a href="' + google + '" target="_blank" rel="noopener">Google Maps</a></div>';
 }
 
 function textBlock(t){
