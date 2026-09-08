@@ -278,19 +278,27 @@ const PROXIES = [
   u => 'https://api.codetabs.com/v1/proxy?quest=' + encodeURIComponent(u)
 ];
 
-async function holePdf(nr){
+function fetchMitZeit(url, ms, opt){
+  const ac = new AbortController();
+  const t = setTimeout(()=>ac.abort(), ms);
+  return fetch(url, Object.assign({signal:ac.signal}, opt||{}))
+    .finally(()=>clearTimeout(t));
+}
+
+async function holePdf(nr, melde){
   const ziel = 'https://www.bahnhof.de/downloads/replacement-service-maps/' + nr + '.pdf';
-  let letzter = '';
-  for(const p of PROXIES){
+  const fehler = [];
+  for(let i=0;i<PROXIES.length;i++){
+    if(melde) melde('Versuch ' + (i+1) + ' von ' + PROXIES.length + ' …');
     try{
-      const r = await fetch(p(ziel));
-      if(!r.ok){ letzter = 'HTTP ' + r.status; continue; }
+      const r = await fetchMitZeit(PROXIES[i](ziel), 15000);
+      if(!r.ok){ fehler.push((i+1)+': HTTP '+r.status); continue; }
       const buf = await r.arrayBuffer();
-      if(buf.byteLength < 2000){ letzter = 'Antwort zu klein'; continue; }
+      if(buf.byteLength < 2000){ fehler.push((i+1)+': Antwort zu klein'); continue; }
       return buf;
-    }catch(e){ letzter = e.message; }
+    }catch(e){ fehler.push((i+1)+': '+(e.name==='AbortError'?'Zeitüberschreitung':e.message)); }
   }
-  throw new Error(letzter || 'kein Zugriff');
+  throw new Error(fehler.join(' · '));
 }
 
 function findeKoordinaten(text){
@@ -340,7 +348,8 @@ async function oeffne(b){
   const pdfUrl = 'https://www.bahnhof.de/downloads/replacement-service-maps/' + b.nr + '.pdf';
   const cache = lade('bf.' + b.nr);
 
-  inhalt.innerHTML = '<div class="lade"><div class="spinner"></div>SEV-Plan wird geladen …</div>';
+  inhalt.innerHTML = '<div class="lade"><div class="spinner"></div><span id="ladeText">SEV-Plan wird geladen …</span></div>';
+  const melde = t => { const el = document.getElementById('ladeText'); if(el) el.textContent = t; };
 
   let kopf = '';
   if(cache && cache.koord){
@@ -348,7 +357,8 @@ async function oeffne(b){
   }
 
   try{
-    const buf = await holePdf(b.nr);
+    const buf = await holePdf(b.nr, melde);
+    melde('Plan wird ausgewertet …');
     const pdf = await pdfjsLib.getDocument({data:buf}).promise;
     const seite = await pdf.getPage(1);
 
