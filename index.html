@@ -99,7 +99,7 @@
 <body>
 <header>
   <h1>SEV-Haltestellen</h1>
-  <p>Schleswig-Holstein · Plan, Weg, Koordinaten</p>
+  <p>Schleswig-Holstein · Plan, Weg, Koordinaten · v3</p>
 </header>
 
 <main>
@@ -271,12 +271,23 @@ function zeichne(){
 
 /* ---------- SEV-Plan laden ---------- */
 
-const PROXIES = [
-  u => u,
-  u => 'https://api.allorigins.win/raw?url=' + encodeURIComponent(u),
-  u => 'https://corsproxy.io/?url=' + encodeURIComponent(u),
-  u => 'https://api.codetabs.com/v1/proxy?quest=' + encodeURIComponent(u)
-];
+function eigenerProxy(){ return (lade('proxy') || '').trim(); }
+
+function proxyListe(){
+  const p = [];
+  const eig = eigenerProxy();
+  if(eig) p.push(u => eig + encodeURIComponent(u));
+  p.push(
+    u => u,
+    u => 'https://api.allorigins.win/raw?url=' + encodeURIComponent(u),
+    u => 'https://api.codetabs.com/v1/proxy/?quest=' + encodeURIComponent(u),
+    u => 'https://cors.eu.org/' + u,
+    u => 'https://test.cors.workers.dev/?' + u
+  );
+  return p;
+}
+
+const PROXIES = proxyListe();
 
 function fetchMitZeit(url, ms, opt){
   const ac = new AbortController();
