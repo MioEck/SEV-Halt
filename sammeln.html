@@ -1,0 +1,506 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#123a4d">
+<title>Koordinaten sammeln · SEV-Halt</title>
+<style>
+  :root{
+    --tiefsee:#123a4d;
+    --tiefsee-hell:#1d5570;
+    --sand:#f2ede4;
+    --papier:#ffffff;
+    --schrift:#16242b;
+    --gedaempft:#5d6f78;
+    --signal:#c4531f;
+    --linie:#d9d2c6;
+    --gruen:#1d6b45;
+    --rot:#9c2b2b;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0}
+  body{
+    background:var(--sand);
+    color:var(--schrift);
+    font-family:"Segoe UI",Roboto,system-ui,sans-serif;
+    font-size:17px;line-height:1.45;
+    -webkit-text-size-adjust:100%;
+  }
+  header{
+    background:var(--tiefsee);color:#fff;
+    padding:14px 16px;position:sticky;top:0;z-index:10;
+    display:flex;align-items:center;gap:12px;
+  }
+  header h1{margin:0;font-size:19px;font-weight:600;letter-spacing:.2px}
+  header p{margin:2px 0 0;font-size:13px;color:#b9d2df}
+  header .grow{flex:1}
+  header a{color:#fff;text-decoration:none;border:1px solid #47788f;border-radius:8px;padding:8px 12px;font-size:15px}
+  main{padding:12px 12px 60px;max-width:640px;margin:0 auto}
+
+  .block{background:var(--papier);border:1px solid var(--linie);border-radius:12px;padding:14px;margin-bottom:12px}
+  .block h2{margin:0 0 8px;font-size:16px;font-weight:600}
+  .klein{font-size:13px;color:var(--gedaempft);margin:6px 0 0}
+
+  input,textarea{
+    width:100%;padding:11px 12px;font-size:16px;font-family:inherit;
+    border:1px solid var(--linie);border-radius:9px;background:var(--papier);
+    color:var(--schrift);
+  }
+  input:focus,textarea:focus{outline:2px solid var(--tiefsee-hell);outline-offset:1px}
+  button{
+    font-family:inherit;font-size:16px;
+    background:var(--papier);color:var(--schrift);
+    border:1px solid var(--linie);border-radius:9px;
+    padding:11px 14px;cursor:pointer;min-height:46px;
+  }
+  button:active{transform:translateY(1px)}
+  .haupt{background:var(--tiefsee);border-color:var(--tiefsee);color:#fff;font-weight:600}
+  .aktion{background:var(--signal);border-color:var(--signal);color:#fff;font-weight:600}
+  .reihe{display:flex;gap:8px;flex-wrap:wrap}
+  .reihe>*{flex:1;min-width:0}
+  .voll{width:100%}
+
+  .wahl{list-style:none;margin:10px 0 0;padding:0;max-height:46vh;overflow-y:auto;border:1px solid var(--linie);border-radius:9px}
+  .wahl li{border-top:1px solid var(--linie)}
+  .wahl li:first-child{border-top:none}
+  .wahl label{display:flex;align-items:center;gap:12px;padding:12px 13px;cursor:pointer}
+  .wahl input[type=checkbox]{width:22px;height:22px;flex:none;accent-color:var(--tiefsee)}
+  .wahl .name{flex:1}
+  .wahl .nr{font-size:13px;color:var(--gedaempft);font-variant-numeric:tabular-nums}
+  .wahl .hat{font-size:12px;color:var(--gruen)}
+
+  .zeile{display:flex;align-items:center;gap:10px;padding:10px 0;border-top:1px solid var(--linie);font-size:16px}
+  .zeile:first-child{border-top:none}
+  .zeile .st{flex:none;width:24px;text-align:center;font-size:18px}
+  .zeile .txt{flex:1}
+  .zeile .info{font-size:13px;color:var(--gedaempft);font-variant-numeric:tabular-nums}
+  .ok{color:var(--gruen)}
+  .fehl{color:var(--rot)}
+  .fehler{background:#fdeee8;border:1px solid #f0c3b1;border-radius:9px;padding:11px 13px;margin-top:10px;font-size:15px}
+  .balken{height:8px;background:var(--linie);border-radius:4px;overflow:hidden;margin:10px 0}
+  .balken i{display:block;height:100%;background:var(--tiefsee-hell);width:0}
+  .aus{opacity:.45;pointer-events:none}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="grow">
+    <h1>Koordinaten sammeln</h1>
+    <p>SEV-Pläne mehrerer Bahnhöfe in einem Durchlauf</p>
+  </div>
+  <a href="./">Zurück</a>
+</header>
+
+<main>
+
+  <div class="block" id="blockWahl">
+    <h2>Bahnhöfe wählen</h2>
+    <div id="listenStatus" class="klein">Bahnhofsliste wird geladen …</div>
+    <input id="suche" type="search" placeholder="Bahnhof suchen" autocomplete="off" style="margin-top:8px">
+    <ul id="wahl" class="wahl"></ul>
+    <div class="reihe" style="margin-top:10px">
+      <button id="btnGemerkte">Gemerkte wählen</button>
+      <button id="btnKeine">Auswahl leeren</button>
+    </div>
+    <p class="klein" id="wahlZahl">0 Bahnhöfe gewählt</p>
+  </div>
+
+  <div class="block">
+    <h2>Namen einfügen</h2>
+    <textarea id="namen" rows="3" placeholder="Neumünster
+Nortorf
+Rendsburg"></textarea>
+    <button id="btnNamen" class="voll" style="margin-top:8px">Aus der Liste auswählen</button>
+    <p class="klein">Ein Name pro Zeile. Wählt die passenden Bahnhöfe oben an.</p>
+    <div id="namenHinweis"></div>
+  </div>
+
+  <div class="block">
+    <h2>Durchlauf</h2>
+    <label style="display:flex;align-items:center;gap:10px;font-size:15px">
+      <input type="checkbox" id="neuHolen" style="width:22px;height:22px;flex:none;accent-color:var(--tiefsee)">
+      Bereits gespeicherte Koordinaten neu holen
+    </label>
+    <div class="reihe" style="margin-top:10px">
+      <button id="btnStart" class="haupt">Sammeln starten</button>
+      <button id="btnStop" class="aus">Abbrechen</button>
+    </div>
+    <div class="balken"><i id="balken"></i></div>
+    <div id="protokoll"></div>
+  </div>
+
+  <div class="block" id="blockErgebnis" style="display:none">
+    <h2>Ergebnis</h2>
+    <p class="klein" id="ergebnisZahl"></p>
+    <button id="btnJson" class="aktion voll" style="margin-top:8px">JSON für SEV-Anfahrt herunterladen</button>
+    <button id="btnKopieren" class="voll" style="margin-top:8px">Koordinatenliste kopieren</button>
+    <p class="klein">Die JSON-Datei in SEV-Anfahrt über „Daten“ → „JSON-Datei importieren“ einlesen.</p>
+  </div>
+
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
+<script>
+pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.worker.min.js';
+
+/* ---------- gemeinsamer Speicher mit SEV-Halt ---------- */
+const SPEICHER = 'sevhalt.';
+const lade    = k => { try { return JSON.parse(localStorage.getItem(SPEICHER+k)); } catch(e){ return null; } };
+const sichere = (k,v) => { try { localStorage.setItem(SPEICHER+k, JSON.stringify(v)); } catch(e){} };
+
+let bahnhoefe = [];
+let gewaehlt = new Set();
+let ergebnisse = [];
+let laeuft = false, abbrechen = false;
+
+/* ---------- Bahnhofsliste ---------- */
+const SPARQL_BOX = `PREFIX geo: <http://www.opengis.net/ont/geosparql#>
+SELECT ?itemLabel ?nr WHERE {
+  SERVICE wikibase:box {
+    ?item wdt:P625 ?coord .
+    bd:serviceParam wikibase:cornerSouthWest "Point(7.8 53.35)"^^geo:wktLiteral .
+    bd:serviceParam wikibase:cornerNorthEast "Point(11.4 55.1)"^^geo:wktLiteral .
+  }
+  ?item wdt:P12282 ?nr .
+  SERVICE wikibase:label { bd:serviceParam wikibase:language "de,en". }
+}`;
+
+const EIGENER_PROXY = 'https://sev.macbook33.workers.dev/?url=';
+const PROXIES = [
+  u => EIGENER_PROXY + encodeURIComponent(u),
+  u => u,
+  u => 'https://api.allorigins.win/raw?url=' + encodeURIComponent(u),
+  u => 'https://api.codetabs.com/v1/proxy/?quest=' + encodeURIComponent(u)
+];
+
+async function sparql(q){
+  const url = 'https://query.wikidata.org/sparql?format=json&query=' + encodeURIComponent(q);
+  let letzter = '';
+  for(const p of PROXIES){
+    try{
+      const r = await fetch(p(url), {headers:{'Accept':'application/sparql-results+json'}});
+      if(!r.ok){ letzter = 'HTTP ' + r.status; continue; }
+      const j = await r.json();
+      if(j.results && j.results.bindings) return j.results.bindings;
+    }catch(e){ letzter = e.message; }
+  }
+  throw new Error(letzter || 'kein Zugriff');
+}
+
+function eigene(){ return lade('eigene') || []; }
+
+async function holeListe(){
+  const zwischen = lade('liste');
+  if(zwischen && zwischen.daten && zwischen.daten.length){
+    bahnhoefe = zwischen.daten;
+    setListenStatus(bahnhoefe.length + ' Bahnhöfe aus dem Speicher von SEV-Halt.');
+    zeichneWahl();
+    return;
+  }
+  try{
+    const z = await sparql(SPARQL_BOX);
+    let daten = z.map(x => ({name:x.itemLabel.value, nr:x.nr.value}))
+      .filter(b => /^\d+$/.test(b.nr) && !/^Q\d+$/.test(b.name))
+      .sort((a,b) => a.name.localeCompare(b.name,'de'));
+    const gesehen = new Set(); const rein = [];
+    for(const b of daten){ if(!gesehen.has(b.nr)){ gesehen.add(b.nr); rein.push(b); } }
+    bahnhoefe = rein;
+    sichere('liste', {daten:rein, stand:Date.now()});
+    setListenStatus(rein.length + ' Bahnhöfe geladen.');
+    zeichneWahl();
+  }catch(e){
+    setListenStatus('Bahnhofsliste konnte nicht geladen werden: ' + e.message + ' — öffne zuerst SEV-Halt, dann liegt sie im Speicher.', true);
+    bahnhoefe = [];
+    zeichneWahl();
+  }
+}
+
+function setListenStatus(text, fehler){
+  const el = document.getElementById('listenStatus');
+  el.textContent = text;
+  el.className = fehler ? 'fehler' : 'klein';
+}
+
+function alleBahnhoefe(){
+  const zusatz = eigene();
+  const nummern = new Set(bahnhoefe.map(b=>b.nr));
+  return bahnhoefe.concat(zusatz.filter(b=>!nummern.has(b.nr)))
+    .sort((a,b)=>a.name.localeCompare(b.name,'de'));
+}
+
+/* ---------- Auswahl ---------- */
+function zeichneWahl(){
+  const filter = document.getElementById('suche').value.trim().toLowerCase();
+  const ul = document.getElementById('wahl');
+  ul.innerHTML = '';
+  const liste = alleBahnhoefe();
+  const treffer = liste.filter(b =>
+    gewaehlt.has(b.nr) || !filter || b.name.toLowerCase().includes(filter) || b.nr.includes(filter)
+  );
+  if(!treffer.length){
+    ul.innerHTML = '<li><div class="klein" style="padding:12px 13px">Kein Bahnhof gefunden.</div></li>';
+  }
+  for(const b of treffer){
+    const cache = lade('bf.' + b.nr);
+    const li = document.createElement('li');
+    const lab = document.createElement('label');
+    const cb = document.createElement('input');
+    cb.type = 'checkbox';
+    cb.checked = gewaehlt.has(b.nr);
+    cb.onchange = () => {
+      if(cb.checked) gewaehlt.add(b.nr); else gewaehlt.delete(b.nr);
+      zeigeZahl();
+    };
+    const nm = document.createElement('span');
+    nm.className = 'name';
+    nm.textContent = b.name;
+    const nr = document.createElement('span');
+    nr.className = 'nr';
+    nr.textContent = b.nr;
+    lab.appendChild(cb); lab.appendChild(nm);
+    if(cache && cache.koord){
+      const hat = document.createElement('span');
+      hat.className = 'hat';
+      hat.textContent = 'gespeichert';
+      lab.appendChild(hat);
+    }
+    lab.appendChild(nr);
+    li.appendChild(lab);
+    ul.appendChild(li);
+  }
+  zeigeZahl();
+}
+
+function zeigeZahl(){
+  document.getElementById('wahlZahl').textContent = gewaehlt.size + ' Bahnhöfe gewählt';
+}
+
+document.getElementById('suche').addEventListener('input', zeichneWahl);
+document.getElementById('btnKeine').onclick = () => { gewaehlt.clear(); zeichneWahl(); };
+document.getElementById('btnGemerkte').onclick = () => {
+  const fav = lade('favoriten') || [];
+  if(!fav.length){ setListenStatus('In SEV-Halt sind keine Bahnhöfe mit ★ gemerkt.'); return; }
+  fav.forEach(n => gewaehlt.add(n));
+  zeichneWahl();
+};
+
+document.getElementById('btnNamen').onclick = () => {
+  const zeilen = document.getElementById('namen').value.split('\n').map(z=>z.trim()).filter(Boolean);
+  const liste = alleBahnhoefe();
+  const fehlt = [];
+  for(const z of zeilen){
+    const such = z.toLowerCase();
+    let treffer = liste.find(b => b.name.toLowerCase() === such)
+               || liste.find(b => b.name.toLowerCase().startsWith(such))
+               || liste.find(b => b.name.toLowerCase().includes(such));
+    if(treffer) gewaehlt.add(treffer.nr); else fehlt.push(z);
+  }
+  zeichneWahl();
+  const box = document.getElementById('namenHinweis');
+  box.innerHTML = fehlt.length
+    ? '<div class="fehler">Nicht in der Liste: ' + fehlt.join(', ') + '. Diese Bahnhöfe in SEV-Halt unten mit Nummer selbst eintragen.</div>'
+    : '';
+};
+
+/* ---------- PDF holen und auswerten ---------- */
+function fetchMitZeit(url, ms){
+  const ac = new AbortController();
+  const t = setTimeout(()=>ac.abort(), ms);
+  return fetch(url, {signal:ac.signal}).finally(()=>clearTimeout(t));
+}
+
+async function holePdf(nr){
+  const ziel = 'https://www.bahnhof.de/downloads/replacement-service-maps/' + nr + '.pdf';
+  const fehler = [];
+  for(let i=0;i<PROXIES.length;i++){
+    try{
+      const r = await fetchMitZeit(PROXIES[i](ziel), 45000);
+      if(!r.ok){ fehler.push((i+1)+': HTTP '+r.status); continue; }
+      const buf = await r.arrayBuffer();
+      if(buf.byteLength < 2000){ fehler.push((i+1)+': Antwort zu klein'); continue; }
+      return buf;
+    }catch(e){ fehler.push((i+1)+': '+(e.name==='AbortError'?'Zeitüberschreitung':e.message)); }
+  }
+  throw new Error(fehler.join(' · '));
+}
+
+function findeKoordinaten(text){
+  if(!text) return null;
+  const m = text.match(/(-?\d{1,2}[.,]\d{3,})[,;\s/]+(-?\d{1,3}[.,]\d{3,})/);
+  if(!m) return null;
+  let a = parseFloat(m[1].replace(',','.')), b = parseFloat(m[2].replace(',','.'));
+  if(Math.abs(a) > 90 && Math.abs(b) <= 90){ const t=a; a=b; b=t; }
+  if(Math.abs(a) > 90 || Math.abs(b) > 180) return null;
+  return {lat:a, lon:b};
+}
+
+async function leseQr(seite){
+  for(const skala of [3, 4.5, 6]){
+    const vp = seite.getViewport({scale:skala});
+    const c = document.createElement('canvas');
+    c.width = Math.round(vp.width); c.height = Math.round(vp.height);
+    await seite.render({canvasContext:c.getContext('2d'), viewport:vp}).promise;
+    const bild = c.getContext('2d').getImageData(0,0,c.width,c.height);
+    const treffer = jsQR(bild.data, c.width, c.height, {inversionAttempts:'attemptBoth'});
+    if(treffer){
+      const k = findeKoordinaten(treffer.data);
+      if(k) return k;
+    }
+  }
+  return null;
+}
+
+function wegText(voll){
+  if(!voll) return '';
+  let t = voll.replace(/\s+/g,' ').trim();
+  const start = t.indexOf('Wegbeschreibung');
+  if(start >= 0) t = t.slice(start);
+  t = t.replace(/^Wegbeschreibung Schienenersatzverkehr\s*\*?\s*/,'');
+  const ende = t.search(/\*?Fahrradmitnahme|Im QR Code/);
+  if(ende > 0) t = t.slice(0, ende);
+  return t.replace(/\s*barrierefrei\s*nicht barrierefrei\s*/,' ').trim();
+}
+
+async function holeBahnhof(nr){
+  const buf = await holePdf(nr);
+  const pdf = await pdfjsLib.getDocument({data:buf}).promise;
+  const seite = await pdf.getPage(1);
+  const tc = await seite.getTextContent();
+  const roh = tc.items.map(i=>i.str).join(' ');
+  const text = wegText(roh);
+  const koord = findeKoordinaten(roh) || await leseQr(seite);
+  return {koord, text};
+}
+
+/* ---------- Durchlauf ---------- */
+const warte = ms => new Promise(r => setTimeout(r, ms));
+
+function protokollZeile(name, nr){
+  const d = document.createElement('div');
+  d.className = 'zeile';
+  d.innerHTML = '<span class="st">·</span><span class="txt"></span><span class="info"></span>';
+  d.querySelector('.txt').textContent = name;
+  d.querySelector('.info').textContent = 'wartet';
+  document.getElementById('protokoll').appendChild(d);
+  return {
+    setzeStatus(zeichen, klasse, info){
+      const st = d.querySelector('.st');
+      st.textContent = zeichen;
+      st.className = 'st ' + (klasse||'');
+      d.querySelector('.info').textContent = info || '';
+    }
+  };
+}
+
+document.getElementById('btnStart').onclick = async function(){
+  if(laeuft) return;
+  const liste = alleBahnhoefe().filter(b => gewaehlt.has(b.nr));
+  if(!liste.length){ alert('Erst Bahnhöfe wählen.'); return; }
+
+  laeuft = true; abbrechen = false; ergebnisse = [];
+  document.getElementById('protokoll').innerHTML = '';
+  document.getElementById('blockErgebnis').style.display = 'none';
+  document.getElementById('blockWahl').classList.add('aus');
+  this.classList.add('aus');
+  document.getElementById('btnStop').classList.remove('aus');
+
+  const neuHolen = document.getElementById('neuHolen').checked;
+  const balken = document.getElementById('balken');
+  let fertig = 0, netzAbrufe = 0;
+
+  for(const b of liste){
+    if(abbrechen) break;
+    const zeile = protokollZeile(b.name, b.nr);
+    const cache = lade('bf.' + b.nr);
+
+    if(cache && cache.koord && !neuHolen){
+      ergebnisse.push({name:b.name, nr:b.nr, koord:cache.koord, text:cache.text||''});
+      zeile.setzeStatus('✓', 'ok', 'aus Speicher');
+    }else{
+      if(netzAbrufe > 0){ zeile.setzeStatus('·','', 'Pause …'); await warte(1500); }
+      if(abbrechen){ zeile.setzeStatus('–','', 'abgebrochen'); break; }
+      zeile.setzeStatus('…','', 'Plan wird geholt');
+      netzAbrufe++;
+      try{
+        const r = await holeBahnhof(b.nr);
+        if(r.koord){
+          sichere('bf.'+b.nr, {koord:r.koord, text:r.text, stand:Date.now()});
+          ergebnisse.push({name:b.name, nr:b.nr, koord:r.koord, text:r.text||''});
+          zeile.setzeStatus('✓','ok', r.koord.lat.toFixed(5)+', '+r.koord.lon.toFixed(5));
+        }else{
+          zeile.setzeStatus('✕','fehl','kein QR-Code im Plan');
+        }
+      }catch(e){
+        zeile.setzeStatus('✕','fehl','Plan nicht erreichbar');
+      }
+    }
+    fertig++;
+    balken.style.width = Math.round(fertig/liste.length*100) + '%';
+  }
+
+  laeuft = false;
+  document.getElementById('btnStart').classList.remove('aus');
+  document.getElementById('btnStop').classList.add('aus');
+  document.getElementById('blockWahl').classList.remove('aus');
+  zeichneWahl();
+
+  if(ergebnisse.length){
+    document.getElementById('blockErgebnis').style.display = '';
+    document.getElementById('ergebnisZahl').textContent =
+      ergebnisse.length + ' von ' + liste.length + ' Bahnhöfen mit Koordinate.';
+  }
+};
+
+document.getElementById('btnStop').onclick = () => { abbrechen = true; };
+
+/* ---------- Ausgabe ---------- */
+function uid(){ return Date.now().toString(36) + Math.random().toString(36).slice(2,7); }
+
+function baueJson(){
+  return {
+    version: 1,
+    bahnhoefe: ergebnisse.map(r => ({
+      id: uid(),
+      name: r.name,
+      halt: r.koord.lat.toFixed(6) + ',' + r.koord.lon.toFixed(6),
+      hinweis: r.text || '',
+      zufahrten: [],
+      abfahrt: []
+    }))
+  };
+}
+
+document.getElementById('btnJson').onclick = () => {
+  const blob = new Blob([JSON.stringify(baueJson(), null, 2)], {type:'application/json'});
+  const d = new Date();
+  const stamp = d.getFullYear() + String(d.getMonth()+1).padStart(2,'0') + String(d.getDate()).padStart(2,'0');
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'sev-halte-' + stamp + '.json';
+  document.body.appendChild(a);
+  a.click();
+  setTimeout(()=>{ URL.revokeObjectURL(a.href); a.remove(); }, 1000);
+};
+
+document.getElementById('btnKopieren').onclick = async () => {
+  const text = ergebnisse
+    .map(r => r.name + '\t' + r.koord.lat.toFixed(6) + ',' + r.koord.lon.toFixed(6))
+    .join('\n');
+  try{
+    await navigator.clipboard.writeText(text);
+    document.getElementById('btnKopieren').textContent = 'Kopiert';
+    setTimeout(()=>{ document.getElementById('btnKopieren').textContent = 'Koordinatenliste kopieren'; }, 2000);
+  }catch(e){
+    alert(text);
+  }
+};
+
+/* ---------- Start ---------- */
+zeichneWahl();
+holeListe();
+</script>
+</body>
+</html>
